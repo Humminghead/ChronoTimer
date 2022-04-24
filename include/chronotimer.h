@@ -5,9 +5,8 @@
 #include <memory>
 #include <utility>
 
-namespace Estimate {
-
-template <typename Tuple> struct Job {
+namespace {
+template <typename Tuple> struct TupledCall {
   Tuple m_tuple;
 
   using Indices =
@@ -18,15 +17,14 @@ template <typename Tuple> struct Job {
   }
 
   auto operator()() noexcept
-      -> decltype(std::declval<Job &>().Invoke(Indices())) {
+      -> decltype(std::declval<TupledCall &>().Invoke(Indices())) {
     return Invoke(Indices());
   }
 };
 
-class AbstractCall {
+class TimerBase {
 public:
-  virtual ~AbstractCall() = default;
-  virtual void run() = 0;
+  virtual ~TimerBase() = default;
 
   auto &duration() { return m_duration; }
 
@@ -35,51 +33,89 @@ protected:
   std::chrono::duration<double> m_duration;
 };
 
-template <typename Callable> struct CallWrapper : public AbstractCall {
-  Callable m_function;
-
-  CallWrapper(Callable &&func) : m_function(std::forward<Callable>(func)) {}
-
-  void run() override {
+template <class RetType> struct CallSelector : public TimerBase {
+  template <class Call> auto Run(Call &&callPtr) -> RetType {
     m_time0 = std::chrono::high_resolution_clock::now();
-    m_function();
+    return [&] {
+      auto result = callPtr();
+      m_duration = std::chrono::high_resolution_clock::now() - m_time0;
+      return result;
+    }();
+  }
+};
+
+template <> struct CallSelector<void> : public TimerBase {
+  template <class Call> void Run(Call &&callPtr) {
+    m_time0 = std::chrono::high_resolution_clock::now();
+    callPtr();
     m_duration = std::chrono::high_resolution_clock::now() - m_time0;
   }
 };
 
-class ChronoTimer {
+template <typename Callable> class RunHelper {
+public:
+  RunHelper(Callable &&func)
+      : m_function(std::forward<Callable>(func)), m_selector{} {}
+
+  auto Run() { return m_selector.Run(m_function); }
+  auto Duration() { return m_selector.duration(); }
+
+private:
+  Callable m_function;
+  CallSelector<decltype(m_function())> m_selector;
+};
+
+template <class Stream, class InfoGetter> struct LazyPrint {
+  explicit LazyPrint(Stream &out, InfoGetter &&getter)
+      : m_stream{out}, m_timeGetter{std::forward<InfoGetter>(getter)} {}
+  ~LazyPrint() { m_stream << m_timeGetter() << '\n'; }
+
+  Stream &m_stream;
+  InfoGetter m_timeGetter;
+};
+}; // namespace
+
+namespace Estimate {
+
+using Seconds = std::chrono::seconds;
+using Milliseconds = std::chrono::milliseconds;
+using Microseconds = std::chrono::microseconds;
+using Nanoseconds = std::chrono::nanoseconds;
+
+template <class Callable, class... Args> class ChronoTimer {
   template <typename... Type>
   using DecayedTuple = std::tuple<typename std::decay<Type>::type...>;
+  using WrappedCall = TupledCall<DecayedTuple<Callable, Args...>>;
+  using CallPointer = std::unique_ptr<RunHelper<WrappedCall>>;
 
-  using m_callPointer = std::unique_ptr<AbstractCall>;
-
-  template <typename _Callable>
-  static m_callPointer MakeCallPointer(_Callable &&__f) {
-    using _Impl = CallWrapper<_Callable>;
-    return m_callPointer{new _Impl{std::forward<_Callable>(__f)}};
+  static CallPointer MakeCallPointer(WrappedCall &&callable) {
+    using Impl = RunHelper<WrappedCall>;
+    return std::unique_ptr<Impl>{new Impl(std::forward<WrappedCall>(callable))};
   }
 
-  template <typename Callable, typename... Args>
-  static Job<DecayedTuple<Callable, Args...>> MakeJob(Callable &&callable,
-                                                      Args &&... args) {
+  static WrappedCall WrapCall(Callable &&callable, Args &&...args) {
     return {DecayedTuple<Callable, Args...>{std::forward<Callable>(callable),
                                             std::forward<Args>(args)...}};
   }
 
 public:
-  auto Run() { return m_statePointer->run(); }
+  auto Run() { return m_statePointer->Run(); }
 
-  template <class Fmt = std::chrono::milliseconds> auto GetTime() const {
-    return std::chrono::duration_cast<Fmt>(m_statePointer->duration()).count();
+  template <class Out, class Fmt = Microseconds> auto RunAndPrint(Out &stream) {
+    LazyPrint lazyPrint(stream, [&] { return GetTime<Fmt>(); });
+    return m_statePointer->Run();
   }
 
-  template <class Callable, class... Args>
+  template <class Fmt = Microseconds> auto GetTime() const {
+    return std::chrono::duration_cast<Fmt>(m_statePointer->Duration()).count();
+  }
+
   ChronoTimer(Callable &&callable, Args... args) {
-    m_statePointer = MakeCallPointer(
-        MakeJob(std::forward<Callable>(callable), std::forward<Args>(args)...));
+    m_statePointer = MakeCallPointer(WrapCall(std::forward<Callable>(callable),
+                                              std::forward<Args>(args)...));
   }
 
 private:
-  m_callPointer m_statePointer;
+  CallPointer m_statePointer;
 };
 } // namespace Estimate
