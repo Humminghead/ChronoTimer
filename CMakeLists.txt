@@ -4,10 +4,6 @@ project(ChronoTimer VERSION 1.0.0 HOMEPAGE_URL https://github.com/Humminghead/Ch
 
 include(GNUInstallDirs)
 
-# Set requred standart version
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 # Create library
 add_library(${PROJECT_NAME} INTERFACE)
 
