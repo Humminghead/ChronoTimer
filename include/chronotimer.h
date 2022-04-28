@@ -77,35 +77,63 @@ template <class Stream, class InfoGetter> struct LazyPrint {
 
 namespace Estimate {
 
-using Seconds = std::chrono::seconds;
-using Milliseconds = std::chrono::milliseconds;
-using Microseconds = std::chrono::microseconds;
-using Nanoseconds = std::chrono::nanoseconds;
+using Seconds = std::chrono::seconds;           ///< Seconds value
+using Milliseconds = std::chrono::milliseconds; ///< Milliseconds value
+using Microseconds = std::chrono::microseconds; ///< Microseconds value
+using Nanoseconds = std::chrono::nanoseconds;   ///< Nanoseconds value
 
+/*!
+ * \brief The ChronoTimer is stopwatch class. Class wraps the call and it
+ * arguments in a tuple and passes it to a special helper class
+ */
 template <class Callable, class... Args> class ChronoTimer {
   template <typename... Type>
   using DecayedTuple = std::tuple<typename std::decay<Type>::type...>;
   using WrappedCall = TupledCall<DecayedTuple<Callable, Args...>>;
   using CallPointer = std::unique_ptr<RunHelper<WrappedCall>>;
 
-  static CallPointer MakeCallPointer(WrappedCall &&callable) {
+  /*!
+   * \brief Creates an instance of member of a class
+   * \param wrapped call object instance
+   * \return CallPointer instance
+   */
+  static CallPointer MakeCallPointer(WrappedCall &&wrappedCall) {
     using Impl = RunHelper<WrappedCall>;
-    return std::unique_ptr<Impl>{new Impl(std::forward<WrappedCall>(callable))};
+    return std::unique_ptr<Impl>{
+        new Impl(std::forward<WrappedCall>(wrappedCall))};
   }
 
+  /*!
+   * \brief Wraps callable object and it arguments in a tuple
+   * \param callable - callable object instance
+   * \param args - aruments of callable oject, if it present
+   * \return Wrapped in special class WrappedCall callable object and it
+   * arguments
+   */
   static WrappedCall WrapCall(Callable &&callable, Args &&...args) {
     return {DecayedTuple<Callable, Args...>{std::forward<Callable>(callable),
                                             std::forward<Args>(args)...}};
   }
 
 public:
+  /*!
+   * \brief Runs the measured function and return the result if present
+   */
   auto Run() { return m_statePointer->Run(); }
 
+  /*!
+   * \brief Runs the measuredss function, return the result (if present) and
+   * print speed time to stream \param stream - stream object where accumulated
+   * time will be output
+   */
   template <class Out, class Fmt = Microseconds> auto RunAndPrint(Out &stream) {
     LazyPrint lazyPrint(stream, [&] { return GetTime<Fmt>(); });
     return m_statePointer->Run();
   }
 
+  /*!
+   * \brief Returns the accumulated invoke time
+   */
   template <class Fmt = Microseconds> auto GetTime() const {
     return std::chrono::duration_cast<Fmt>(m_statePointer->Duration()).count();
   }
