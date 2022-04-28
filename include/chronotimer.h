@@ -9,11 +9,10 @@ namespace {
 template <typename Tuple> struct TupledCall {
   Tuple m_tuple;
 
-  using Indices =
-      typename std::index_sequence_for<typename std::tuple_size<Tuple>>;
+  using Indices = std::make_index_sequence<std::tuple_size_v<Tuple>>;
 
-  template <size_t... _Ind> auto Invoke(std::index_sequence<_Ind...>) noexcept {
-    return std::invoke(std::get<_Ind>(std::move(m_tuple))...);
+  template <size_t... Ind> auto Invoke(std::index_sequence<Ind...>) noexcept {
+        return std::invoke(std::get<Ind>(std::move(m_tuple))...);
   }
 
   auto operator()() noexcept
