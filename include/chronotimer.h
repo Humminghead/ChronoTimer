@@ -123,7 +123,8 @@ public:
 
   /*!
    * \brief Runs the measuredss function, return the result (if present) and
-   * print speed time to stream \param stream - stream object where accumulated
+   * print speed time to stream (in microseconds by default)
+   * \param stream - stream object where accumulated
    * time will be output
    */
   template <class Out, class Fmt = Microseconds> auto RunAndPrint(Out &stream) {
@@ -132,16 +133,24 @@ public:
   }
 
   /*!
-   * \brief Returns the accumulated invoke time
+   * \brief Returns the accumulated invoke time (in microseconds by default)
    */
   template <class Fmt = Microseconds> auto GetTime() const {
     return std::chrono::duration_cast<Fmt>(m_statePointer->Duration()).count();
   }
 
-  ChronoTimer(Callable &&callable, Args... args) {
+  explicit ChronoTimer(Callable &&callable, Args... args) {
     m_statePointer = MakeCallPointer(WrapCall(std::forward<Callable>(callable),
                                               std::forward<Args>(args)...));
   }
+
+  ChronoTimer(ChronoTimer&&) = default;
+  ChronoTimer& operator=(ChronoTimer&&) = default;
+
+  ChronoTimer(const ChronoTimer&) = delete;
+  ChronoTimer& operator=(const ChronoTimer&) = delete;
+
+  ~ChronoTimer() = default;
 
 private:
   CallPointer m_statePointer;
