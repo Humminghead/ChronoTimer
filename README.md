@@ -1,7 +1,17 @@
 # ChronoTimer
-This is a simple timer class. The main purpose of this class is to enable a developer to estimate a performance of hotspots in their C++ code.
+This is a simple stopwatch class. The main purpose of this class is to enable a developer to estimate a performance of hotspots in their C++ code.
 
 # Requrements:
+- Operating system on Linux
+- Compiler what support C++ 17
+
+# Installation:
+Clone repository somewere and perform commands:
+```
+cd ./ChronoTimer
+cmake ./CMakeLists.txt
+make install
+```
 
 # Example of usage:
 ```C++
