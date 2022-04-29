@@ -12,7 +12,7 @@ template <typename Tuple> struct TupledCall {
   using Indices = std::make_index_sequence<std::tuple_size_v<Tuple>>;
 
   template <size_t... Ind> auto Invoke(std::index_sequence<Ind...>) noexcept {
-        return std::invoke(std::get<Ind>(std::move(m_tuple))...);
+        return std::invoke(std::get<Ind>(m_tuple)...);
   }
 
   auto operator()() noexcept
