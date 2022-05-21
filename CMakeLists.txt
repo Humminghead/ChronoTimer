@@ -20,8 +20,8 @@ set(INCLUDE_INSTALL_DIR ${CMAKE_INSTALL_FULL_INCLUDEDIR}/${PROJECT_NAME} )
 set(CMAKE_INSTALL_DIR ${CMAKE_INSTALL_FULL_LIBDIR}/cmake/${PROJECT_NAME} )
 
 # Print install path
-message(VERBOSE "Install include in: " ${INCLUDE_INSTALL_DIR})
-message(VERBOSE "Install cmake in: " ${CMAKE_INSTALL_DIR})
+message(VERBOSE "Install includes in: " ${INCLUDE_INSTALL_DIR})
+message(VERBOSE "Install cmake file in: " ${CMAKE_INSTALL_DIR})
 
 # Create configuration files
 configure_package_config_file( "${PROJECT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in"
